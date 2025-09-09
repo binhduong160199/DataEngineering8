@@ -1,3 +1,6 @@
-pandas
-numpy
 jupyterlab
+ipykernel
+pandas
+pyarrow
+matplotlib
+plotly
