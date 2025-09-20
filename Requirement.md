@@ -54,6 +54,7 @@
   um Anbieter vergleichen zu können.
 - Als Fahrgast möchte ich einen Überblick über die durchschnittliche Warte- und Fahrzeit bekommen,  
   damit ich meine Fahrt besser planen kann.
+- Als Fahrgast möchte ich einen Überblick über die durchschnittliche Wartezeit und den durchschnittlichen Preis von Rollstuhlfahrten bekommen, damit ich meine Fahrt besser planen kann.
 
 ### Data Scientists
 - Als Data Scientist möchte ich qualitativ hochwertige Mobilitätsdaten zur Verfügung haben,  
