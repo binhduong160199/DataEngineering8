@@ -4,3 +4,4 @@ pandas
 pyarrow
 matplotlib
 plotly
+seaborn
