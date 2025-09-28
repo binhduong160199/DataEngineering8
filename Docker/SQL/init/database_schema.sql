@@ -34,5 +34,3 @@ CREATE TABLE trips (
     wav_request_flag BOOLEAN,
     wav_match_flag BOOLEAN
 );
-
-FOREIGN KEY (XXX) REFERENCES taxi_zones(id), FOREIGN KEY (XXX) REFERENCES taxi_zones(id), FOREIGN KEY (XXX) REFERENCES providers(id),
