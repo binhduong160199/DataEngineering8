@@ -1,4 +1,3 @@
-
 """
 AUTHOR: GROUP8, DATA ENGINEERING, DANIEL IYAMU - FH TECHNIKUM AI ENGINEERING
 Minimal NYC TLC HVFHS → Postgres loader (single Parquet file).
@@ -97,6 +96,12 @@ def next_trip_id(cur):
     cur.execute("SELECT COALESCE(MAX(id),0) FROM trips")
     return int(cur.fetchone()[0]) + 1
 
+def nonpositive(x):
+        try:
+            return pd.notna(x) and float(x) <= 0
+        except Exception:
+            return False
+        
 def main():
     setup_logging()
     ap = argparse.ArgumentParser(description="Load ONE NYC TLC Parquet file into Postgres.")
@@ -173,13 +178,23 @@ def main():
         "shared_request_flag", "shared_match_flag",
         "access_a_ride_flag", "wav_request_flag", "wav_match_flag"
     ]
-
+    
     total = len(df)
-    ok = failed = 0
+    ok = failed = skipped = 0 
 
     logging.info("Inserting trips ...")
     for r in tqdm(df.itertuples(index=False), total=total, desc="Loading trips"):
         try:
+
+            # check if row must be skipped
+            if (
+                nonpositive(getattr(r, "trip_miles", None)) or
+                nonpositive(getattr(r, "base_passenger_fare", None)) or
+                nonpositive(getattr(r, "driver_pay", None))
+            ):
+                skipped += 1
+                continue
+
             # compute provider_id inline (no _provider_id column)
             provider_label = provider_label_from_code(getattr(r, "hvfhs_license_num"))
             provider_id = provider_cache.get(provider_label)
@@ -223,9 +238,12 @@ def main():
             ok += 1
         except Exception as e:
             failed += 1
-            logging.error("Trip insert error (row %d): %s", ok + failed, e)
+            logging.error("Trip insert error (row %d): %s", ok + failed + skipped, e)
 
-    logging.info("Done. Inserted OK: %d | Failed: %d | Total: %d", ok, failed, total)
+    logging.info(
+    "Done. Inserted OK: %d | Skipped (non-positive fields): %d | Failed: %d | Total: %d",
+    ok, skipped, failed, total
+    )
     try:
         cur.close(); conn.close()
     except Exception:
