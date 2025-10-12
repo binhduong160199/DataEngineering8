@@ -1,15 +1,15 @@
 CREATE TABLE providers (
-    id INTEGER PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     provider_name VARCHAR(32) UNIQUE NOT NULL
 );
 
 CREATE TABLE taxi_zones (
-    id INTEGER PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     zone_name VARCHAR(64) NOT NULL
 );
 
 CREATE TABLE trips (
-    id INTEGER PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     provider_id INTEGER REFERENCES providers(id),
     pu_location_id INTEGER REFERENCES taxi_zones(id),
     do_location_id INTEGER REFERENCES taxi_zones(id),
