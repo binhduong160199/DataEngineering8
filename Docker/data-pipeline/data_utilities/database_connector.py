@@ -2,7 +2,6 @@ import psycopg2
 import os
 from sqlalchemy import create_engine
 
-# Database configuration (shared by all sections)
 DB_HOST = os.getenv("PG_HOST", "db")
 DB_NAME = "postgres"
 DB_USER = "appuser"

@@ -1,15 +1,10 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-from data_utilities import database_connector  # Import the shared connection helpers
-
-
-# =======================================================
-# 1. DATA LOADING (Isolated and Cached)
-# =======================================================
+from data_utilities import database_connector
 
 @st.cache_data(show_spinner="Loading Jose's Data: Provider Market Share...", ttl=600)
-def load_jose_market_share():
+def load_diego_market_share():
     """Loads total trip counts and earnings per provider."""
     engine = database_connector.get_sqlalchemy_engine()
 
@@ -26,16 +21,12 @@ def load_jose_market_share():
     return df
 
 
-# =======================================================
-# 2. RENDERING FUNCTION (Called by app.py)
-# =======================================================
-
 def render():
     st.header("Diego's Analysis: Provider Market Share & Earnings")
     st.markdown("This section analyzes total trip volume and revenue across all providers.")
 
     # 1. Load Data
-    market_share_df = load_jose_market_share()
+    market_share_df = load_diego_market_share()
 
     # 2. Visualization 1: Market Share
     fig, ax = plt.subplots(figsize=(8, 4))
