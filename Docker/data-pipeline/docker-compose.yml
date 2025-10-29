@@ -5,11 +5,13 @@ services:
     image: spark:3.5.7-scala2.12-java17-python3-ubuntu
     container_name: spark-master
     environment:
+
       - SPARK_NO_DAEMONIZE=true         # keep process in foreground
       - SPARK_PUBLIC_DNS=localhost      # optional: nicer UI links
     user: root
     command: >
         /bin/bash -c "apt-get update && pip install --upgrade pip && pip install psycopg2-binary && /opt/spark/sbin/start-master.sh"
+
     ports:
       - "7077:7077"
       - "8080:8080"
@@ -45,6 +47,19 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./init:/docker-entrypoint-initdb.d:ro
+    networks: [spark-net]
+
+  streamlit:
+    build:
+      context: .
+      dockerfile: Dockerfile.streamlit
+    container_name: streamlit-dashboard
+    depends_on:
+      - db
+    ports:
+      - "8501:8501"
+    volumes:
+      - .:/app
     networks: [spark-net]
 
 volumes:
