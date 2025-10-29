@@ -3,6 +3,8 @@ FROM python:3.10-slim
 WORKDIR /app
 COPY streamlit_app.py .
 COPY requirements.txt .
+COPY data_utilities/ ./data_utilities/
+COPY dashboard_sections/ ./dashboard_sections/
 
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
