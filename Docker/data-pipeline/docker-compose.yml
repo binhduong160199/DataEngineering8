@@ -7,10 +7,14 @@ services:
     environment:
       - SPARK_NO_DAEMONIZE=true         # keep process in foreground
       - SPARK_PUBLIC_DNS=localhost      # optional: nicer UI links
-    command: ["/opt/spark/sbin/start-master.sh"]
+    user: root
+    command: >
+        /bin/bash -c "apt-get update && pip install --upgrade pip && pip install psycopg2-binary && /opt/spark/sbin/start-master.sh"
     ports:
       - "7077:7077"
       - "8080:8080"
+    volumes:
+          - .:/app
     networks: [spark-net]
 
   spark-worker-1:
@@ -20,9 +24,12 @@ services:
       - spark-master
     environment:
       - SPARK_NO_DAEMONIZE=true
+    user: root
     command: ["/opt/spark/sbin/start-worker.sh", "spark://spark-master:7077"]
     ports:
       - "8081:8081"
+    volumes:
+      - .:/app
     networks: [spark-net]
 
   db:
