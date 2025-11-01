@@ -19,3 +19,7 @@ It uses Python, pandas, and JupyterLab in a virtual environment.
    jupyter lab
    ```
 
+## Streamlit Dashboard
+
+Im Ordner `Docker/data-pipeline/dashboard_sections/` liegt der Abschnitt `section_tugba.py`. Dieses Modul baut die Angebots- und Nachfrageanalyse für Taxifahrer auf: Es lädt die Fahrten aus PostgreSQL, ermöglicht Datum- und Zonenfilter und zeigt Diagramme zu stündlichen Fahrgastzahlen sowie eine Heatmap der Nachfrage-Lücken. Starte den Streamlit-Container (`docker compose run --rm streamlit streamlit run streamlit_app.py`), um die Oberfläche aufzurufen.
+
