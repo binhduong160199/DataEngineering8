@@ -1,17 +1,20 @@
 import streamlit as st
-from dashboard_sections import section_diego, section_tugba
+from dashboard_sections import section_diego, section_tugba, section_duong
 
 st.set_page_config(layout="wide", page_title="Team Dashboard")
 st.title("NYC Trip Analysis Dashboard")
-st.markdown("""
-Hier schöne Beschreibung einfügen
-""")
+st.markdown("Hier schöne Beschreibung einfügen")
 st.markdown("---")
 
-tabs = st.tabs(["Provider Market Share", "Angebot & Nachfrage Analyse"])
+tab1, tab2, tab3 = st.tabs([
+    "Provider Market Share",           # Diego
+    "Angebot & Nachfrage Analyse",     # Tugba
+    "Wait & Trip Time"                 # Duong
+])
 
-with tabs[0]:
+with tab1:
     section_diego.render()
-
-with tabs[1]:
+with tab2:
     section_tugba.render()
+with tab3:
+    section_duong.render()
