@@ -1,5 +1,5 @@
 import streamlit as st
-from dashboard_sections import section_diego, section_tugba, section_duong, section_negar
+from dashboard_sections import section_diego, section_tugba, section_duong, section_negar, section_daniel
 
 st.set_page_config(layout="wide", page_title="Group 8 - Data Engineering Project")
 
@@ -11,8 +11,9 @@ It analyzes NYC taxi trip data to explore trends in distance, fare, and passenge
 """)
 st.markdown("---")
 
-tab1, tab2, tab3, tab4 = st.tabs([
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "Provider Preise",                 # Diego
+    "Performance Benchmark",           # Daniel
     "Angebot & Nachfrage Analyse",     # Tugba
     "Wait & Trip Time",                # Duong
     "Taxi Demand"                      # Negar 
@@ -21,8 +22,10 @@ tab1, tab2, tab3, tab4 = st.tabs([
 with tab1:
     section_diego.render()
 with tab2:
-    section_tugba.render()
+    section_daniel.render()
 with tab3:
-    section_duong.render()
+    section_tugba.render()
 with tab4:
+    section_duong.render()
+with tab5:
     section_negar.render()
