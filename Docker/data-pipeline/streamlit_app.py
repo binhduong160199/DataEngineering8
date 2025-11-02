@@ -18,3 +18,5 @@ with tab2:
     section_tugba.render()
 with tab3:
     section_duong.render()
+with tab4:
+    section_negar.render()
