@@ -1,7 +1,0 @@
-jupyterlab
-ipykernel
-pandas
-pyarrow
-matplotlib
-plotly
-seaborn
