@@ -7,7 +7,7 @@ st.markdown("Hier schöne Beschreibung einfügen")
 st.markdown("---")
 
 tab1, tab2, tab3 = st.tabs([
-    "Provider Market Share",           # Diego
+    "Provider Preise",                 # Diego
     "Angebot & Nachfrage Analyse",     # Tugba
     "Wait & Trip Time"                 # Duong
 ])
