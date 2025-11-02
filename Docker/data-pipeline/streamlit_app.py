@@ -3,7 +3,7 @@ from dashboard_sections import section_diego, section_tugba, section_duong
 
 st.set_page_config(layout="wide", page_title="Team Dashboard")
 st.title("NYC Trip Analysis Dashboard")
-st.markdown("Hier schöne Beschreibung einfügen")
+st.markdown("Gruppe 8 - Binh Duong Nguyen, Daniel Frank Iyamu, Jose Zehentner, Negar Rahbar, Tugba Sahin")
 st.markdown("---")
 
 tab1, tab2, tab3 = st.tabs([
