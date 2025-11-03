@@ -30,11 +30,14 @@ def render():
 
     df = load_trip_data()
 
-    # --- Filters ---
-    st.sidebar.header("Filters")
+    # --- Filters (inside this tab only) ---
+    st.subheader("Time Range Selection")
     all_hours = sorted(df["pickup_hour"].dropna().unique())
-    selected_hours = st.sidebar.slider(
-        "Select hour range", int(min(all_hours)), int(max(all_hours)), (8, 18)
+    selected_hours = st.slider(
+        "Select hour range", 
+        int(min(all_hours)), 
+        int(max(all_hours)), 
+        (8, 18)
     )
 
     # Filtered Data
@@ -48,9 +51,7 @@ def render():
 
     # --- Visualization 1: Trips by Hour ---
     st.subheader("Trips by Hour")
-    hourly_df = (
-        filtered.groupby("pickup_hour")["ride_count"].sum().reset_index()
-    )
+    hourly_df = filtered.groupby("pickup_hour")["ride_count"].sum().reset_index()
 
     fig1, ax1 = plt.subplots(figsize=(8, 4))
     ax1.bar(hourly_df["pickup_hour"], hourly_df["ride_count"], color="#2E86C1")
