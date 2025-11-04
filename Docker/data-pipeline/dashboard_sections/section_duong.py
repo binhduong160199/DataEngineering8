@@ -4,34 +4,38 @@ import numpy as np
 import plotly.express as px
 from data_utilities import database_connector
 
+# --- USER STORY shown on top of dashboard for context
 USER_STORY = (
     "Als Fahrgast möchte ich einen Überblick über die durchschnittliche Warte- und Fahrzeit bekommen, "
     "damit ich meine Fahrt besser planen kann"
 )
 
+# --- Helper function to run SQL queries on the database
 def load_sql(query):
-    engine = database_connector.get_sqlalchemy_engine()
-    return pd.read_sql_query(query, engine)
+    engine = database_connector.get_sqlalchemy_engine()     # Get SQLAlchemy engine for connection
+    return pd.read_sql_query(query, engine)                 # Run query and return as DataFrame
 
+# 1. Overall average wait and trip time for all rides
 @st.cache_data(show_spinner="Lade Durchschnittsdaten...", ttl=600)
 def load_overall():
     query = """
         SELECT
-            ROUND(AVG(EXTRACT(EPOCH FROM (t.pickup_datetime - t.request_datetime))/60),1) AS avg_wait,
-            ROUND(AVG(EXTRACT(EPOCH FROM (t.dropoff_datetime - t.pickup_datetime))/60),1) AS avg_trip
+            ROUND(AVG(EXTRACT(EPOCH FROM (t.pickup_datetime - t.request_datetime))/60),1) AS avg_wait,  -- Average wait time (min)
+            ROUND(AVG(EXTRACT(EPOCH FROM (t.dropoff_datetime - t.pickup_datetime))/60),1) AS avg_trip  -- Average trip time (min)
         FROM trips t
-        WHERE t.request_datetime IS NOT NULL AND t.pickup_datetime IS NOT NULL AND t.dropoff_datetime IS NOT NULL
-            AND t.pickup_datetime > t.request_datetime AND t.dropoff_datetime > t.pickup_datetime
-            AND EXTRACT(EPOCH FROM (t.pickup_datetime - t.request_datetime))/60 BETWEEN 0 AND 60
-            AND EXTRACT(EPOCH FROM (t.dropoff_datetime - t.pickup_datetime))/60 BETWEEN 1 AND 120
+        WHERE t.request_datetime IS NOT NULL AND t.pickup_datetime IS NOT NULL AND t.dropoff_datetime IS NOT NULL  -- Only complete records
+            AND t.pickup_datetime > t.request_datetime AND t.dropoff_datetime > t.pickup_datetime              -- Filter out invalid times
+            AND EXTRACT(EPOCH FROM (t.pickup_datetime - t.request_datetime))/60 BETWEEN 0 AND 60               -- Remove outliers: wait 0-60 min
+            AND EXTRACT(EPOCH FROM (t.dropoff_datetime - t.pickup_datetime))/60 BETWEEN 1 AND 120              -- Remove outliers: trip 1-120 min
     """
     return load_sql(query)
 
+# 2. Average wait/trip time grouped by provider (Uber/Lyft/etc)
 @st.cache_data(show_spinner="Lade Anbieter-Stats...", ttl=600)
 def load_by_provider():
     query = """
         SELECT
-            p.provider_name,
+            p.provider_name,  -- Grouped by provider name
             ROUND(AVG(EXTRACT(EPOCH FROM (t.pickup_datetime - t.request_datetime))/60),1) AS avg_wait,
             ROUND(AVG(EXTRACT(EPOCH FROM (t.dropoff_datetime - t.pickup_datetime))/60),1) AS avg_trip
         FROM trips t
@@ -40,16 +44,17 @@ def load_by_provider():
             AND t.pickup_datetime > t.request_datetime AND t.dropoff_datetime > t.pickup_datetime
             AND EXTRACT(EPOCH FROM (t.pickup_datetime - t.request_datetime))/60 BETWEEN 0 AND 60
             AND EXTRACT(EPOCH FROM (t.dropoff_datetime - t.pickup_datetime))/60 BETWEEN 1 AND 120
-        GROUP BY p.provider_name
-        ORDER BY avg_wait
+        GROUP BY p.provider_name    -- Group results by provider
+        ORDER BY avg_wait           -- Sort by average wait time
     """
     return load_sql(query)
 
+# 3. Wait/trip time by pickup HOUR of day (0...23)
 @st.cache_data(show_spinner="Lade Stunden-Stats...", ttl=600)
 def load_by_hour():
     query = """
         SELECT
-            EXTRACT(HOUR FROM t.pickup_datetime) AS pickup_hour,
+            EXTRACT(HOUR FROM t.pickup_datetime) AS pickup_hour,  -- Group by pickup hour
             ROUND(AVG(EXTRACT(EPOCH FROM (t.pickup_datetime - t.request_datetime))/60),1) AS avg_wait,
             ROUND(AVG(EXTRACT(EPOCH FROM (t.dropoff_datetime - t.pickup_datetime))/60),1) AS avg_trip
         FROM trips t
@@ -57,16 +62,17 @@ def load_by_hour():
             AND t.pickup_datetime > t.request_datetime AND t.dropoff_datetime > t.pickup_datetime
             AND EXTRACT(EPOCH FROM (t.pickup_datetime - t.request_datetime))/60 BETWEEN 0 AND 60
             AND EXTRACT(EPOCH FROM (t.dropoff_datetime - t.pickup_datetime))/60 BETWEEN 1 AND 120
-        GROUP BY pickup_hour
+        GROUP BY pickup_hour       -- Group by hour of day
         ORDER BY pickup_hour
     """
     return load_sql(query)
 
+# 4. Wait/trip time by weekday (Monday, Tuesday,...)
 @st.cache_data(show_spinner="Lade Wochentag-Stats...", ttl=600)
 def load_by_weekday():
     query = """
         SELECT
-            TRIM(TO_CHAR(t.pickup_datetime, 'Day')) AS weekday,
+            TRIM(TO_CHAR(t.pickup_datetime, 'Day')) AS weekday,    -- Convert to weekday name
             ROUND(AVG(EXTRACT(EPOCH FROM (t.pickup_datetime - t.request_datetime))/60),1) AS avg_wait,
             ROUND(AVG(EXTRACT(EPOCH FROM (t.dropoff_datetime - t.pickup_datetime))/60),1) AS avg_trip
         FROM trips t
@@ -74,9 +80,9 @@ def load_by_weekday():
             AND t.pickup_datetime > t.request_datetime AND t.dropoff_datetime > t.pickup_datetime
             AND EXTRACT(EPOCH FROM (t.pickup_datetime - t.request_datetime))/60 BETWEEN 0 AND 60
             AND EXTRACT(EPOCH FROM (t.dropoff_datetime - t.pickup_datetime))/60 BETWEEN 1 AND 120
-        GROUP BY TRIM(TO_CHAR(t.pickup_datetime, 'Day'))
+        GROUP BY TRIM(TO_CHAR(t.pickup_datetime, 'Day'))      -- Group by weekday name
         ORDER BY
-            CASE TRIM(TO_CHAR(t.pickup_datetime, 'Day'))
+            CASE TRIM(TO_CHAR(t.pickup_datetime, 'Day'))      -- Sort Monday first, then Tuesday, etc
                 WHEN 'Monday' THEN 1
                 WHEN 'Tuesday' THEN 2
                 WHEN 'Wednesday' THEN 3
@@ -88,6 +94,7 @@ def load_by_weekday():
     """
     return load_sql(query)
 
+# 5. Zonen mit längster Wartezeit (nur Zonen mit >1000 Fahrten, Top 10)
 @st.cache_data(show_spinner="Lade Zonen-Stats...", ttl=600)
 def load_by_zone():
     query = """
@@ -102,13 +109,14 @@ def load_by_zone():
             AND t.pickup_datetime > t.request_datetime AND t.dropoff_datetime > t.pickup_datetime
             AND EXTRACT(EPOCH FROM (t.pickup_datetime - t.request_datetime))/60 BETWEEN 0 AND 60
             AND EXTRACT(EPOCH FROM (t.dropoff_datetime - t.pickup_datetime))/60 BETWEEN 1 AND 120
-        GROUP BY z.zone_name
-        HAVING COUNT(*) > 1000
-        ORDER BY avg_wait DESC
-        LIMIT 10
+        GROUP BY z.zone_name      -- Group by zone name
+        HAVING COUNT(*) > 1000    -- Only include zones with more than 1000 trips
+        ORDER BY avg_wait DESC    -- Sort by highest wait time first
+        LIMIT 10                  -- Only top 10
     """
     return load_sql(query)
 
+# 6. Distribution/histogram: sample 100,000 rides
 @st.cache_data(show_spinner="Lade Hist-Daten...", ttl=600)
 def load_hist():
     query = """
@@ -120,15 +128,16 @@ def load_hist():
             AND t.pickup_datetime > t.request_datetime AND t.dropoff_datetime > t.pickup_datetime
             AND EXTRACT(EPOCH FROM (t.pickup_datetime - t.request_datetime))/60 BETWEEN 0 AND 60
             AND EXTRACT(EPOCH FROM (t.dropoff_datetime - t.pickup_datetime))/60 BETWEEN 1 AND 120
-        LIMIT 100000
+        LIMIT 100000    -- Just a sample, for performance
     """
     return load_sql(query)
 
+# 7. Heatmap: avg wait by hour and weekday
 @st.cache_data(show_spinner="Lade Heatmap-Stats...", ttl=600)
 def load_by_hour_day():
     query = """
         SELECT
-            EXTRACT(HOUR FROM t.pickup_datetime) AS hour,
+            EXTRACT(HOUR FROM t.pickup_datetime) AS hour,     -- Hour as number
             TRIM(TO_CHAR(t.pickup_datetime, 'Day')) AS weekday,
             ROUND(AVG(EXTRACT(EPOCH FROM (t.pickup_datetime - t.request_datetime))/60),1) AS avg_wait
         FROM trips t
@@ -141,7 +150,7 @@ def load_by_hour_day():
     return load_sql(query)
 
 def render():
-    # Local dark card just for your dashboard section!
+    # --- Use a local "card" for your whole dashboard, with a dark background
     st.markdown(
         """
         <div style="background-color: #181C22; border-radius: 18px; padding: 32px 28px 24px 28px; margin-bottom:24px;">
@@ -149,14 +158,16 @@ def render():
         unsafe_allow_html=True
     )
 
+    # User Story and main KPIs on top
     st.header(f":blue[User Story]")
     st.markdown(
         "<span style='color:#b3e5fc; font-size:1.2em;'>"
         f"{USER_STORY}</span>", unsafe_allow_html=True
     )
 
+    # --- 1. OVERALL KPIs
     overall = load_overall()
-    kpi1, kpi2 = st.columns(2)
+    kpi1, kpi2 = st.columns(2)  # Two columns for metrics
     with kpi1:
         st.metric("Durchschnittliche Wartezeit (min)", f"{overall['avg_wait'][0]:.1f}", label_visibility="visible", help="Ø Wartezeit aller Fahrten (min)")
     with kpi2:
@@ -164,6 +175,7 @@ def render():
 
     st.divider()
 
+    # --- 2. Provider Table (Uber, Lyft, etc)
     st.subheader("Durchschnittliche Zeiten pro Anbieter")
     by_provider = load_by_provider()
     st.dataframe(
@@ -171,6 +183,7 @@ def render():
         width="stretch",
         hide_index=True
     )
+    # Show best/worst provider in a colored note
     if not by_provider.empty:
         best = by_provider.nsmallest(1, "avg_wait")
         worst = by_provider.nlargest(1, "avg_wait")
@@ -179,13 +192,16 @@ def render():
             f"<b>Langsamster Anbieter:</b> {worst.iloc[0,0]}</span>", unsafe_allow_html=True
         )
 
+    # --- 3. Interactive hour-of-day analysis (slider)
     st.subheader("Zeiten nach Stunde des Tages")
     hour_range = st.slider(
         "Wähle einen Stundenbereich",
         min_value=0, max_value=23, value=(7, 19)
     )
     by_hour = load_by_hour()
+    # Filter only data for the selected hour range
     by_hour = by_hour[(by_hour['pickup_hour'] >= hour_range[0]) & (by_hour['pickup_hour'] <= hour_range[1])]
+    # Line chart for wait/trip times by hour
     fig = px.line(
         by_hour, x="pickup_hour", y=["avg_wait", "avg_trip"],
         labels={"value": "Minuten", "pickup_hour": "Stunde"},
@@ -195,8 +211,9 @@ def render():
     fig.update_layout(plot_bgcolor="#181C22", paper_bgcolor="#181C22")
     st.plotly_chart(fig, use_container_width=True)
 
+    # --- 4. Interactive weekday bar chart
     st.subheader("Zeiten nach Wochentag")
-    # Interactive toggle (only for your section!)
+    # User can toggle between both, just wait, just trip
     option = st.radio(
         "Anzeigen:", options=["Beide", "Nur Wartezeit", "Nur Fahrzeit"], horizontal=True
     )
@@ -208,6 +225,7 @@ def render():
     else:
         y_data = ["avg_wait", "avg_trip"]
 
+    # Bar chart by weekday
     fig2 = px.bar(
         by_weekday, x="weekday", y=y_data,
         labels={"value": "Minuten", "weekday": "Wochentag"},
@@ -216,7 +234,7 @@ def render():
     )
     fig2.update_layout(plot_bgcolor="#181C22", paper_bgcolor="#181C22")
     st.plotly_chart(fig2, use_container_width=True)
-    with st.expander("Tabellarische Werte anzeigen"):
+    with st.expander("Tabellarische Werte anzeigen"):  # Collapsible table for data
         st.dataframe(
             by_weekday.rename(
                 columns={"weekday": "Wochentag", "avg_wait": "Wartezeit (min)", "avg_trip": "Fahrzeit (min)"}
@@ -225,7 +243,7 @@ def render():
             use_container_width=True
         )
 
-        # --- INTERAKTIVER BEREICH: Zonen mit längster/kürzester Wartezeit ---
+    # --- 5. Interactive: Top 10 longest/shortest wait zones
     st.subheader("Zonen mit längster/kürzester Wartezeit (Top 10, >1000 Fahrten)")
     by_zone = load_by_zone()
     option_zone = st.radio(
@@ -240,6 +258,7 @@ def render():
         top_zones = by_zone.nsmallest(10, "avg_wait")
         sort_order = True
 
+    # Table of top zones
     st.dataframe(
         top_zones.rename(
             columns={'pickup_zone': 'Zone', 'avg_wait': 'Wartezeit', 'avg_trip': 'Fahrzeit', 'trip_count': 'Anzahl Fahrten'}
@@ -248,6 +267,7 @@ def render():
         hide_index=True
     )
 
+    # Horizontal bar chart for these zones
     fig_zone = px.bar(
         top_zones.sort_values("avg_wait", ascending=sort_order),
         x="avg_wait",
@@ -268,7 +288,7 @@ def render():
     )
     st.plotly_chart(fig_zone, use_container_width=True)
 
-    # --- INTERAKTIVER BEREICH: Histogramm ---
+    # --- 6. Interactive histogram (wait/trip overlay)
     st.subheader("Verteilung der Warte- und Fahrzeiten (Histogramm)")
     hist_df = load_hist()
     hist_mode = st.radio(
@@ -297,7 +317,7 @@ def render():
     fig3.update_layout(plot_bgcolor="#181C22", paper_bgcolor="#181C22")
     st.plotly_chart(fig3, use_container_width=True)
 
-    # --- INTERAKTIVER BEREICH: Heatmap ---
+    # --- 7. Interactive heatmap (wait by hour and weekday)
     st.subheader("Heatmap: Wartezeit nach Stunde & Wochentag")
     heatmap_df = load_by_hour_day()
     weekday_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -329,6 +349,15 @@ def render():
         aspect="auto",
         template="plotly_dark",
         title="Heatmap: Wartezeit nach Stunde und Tag"
+        # Interactive heatmap of average wait times by hour & weekday  
     )
-    fig4.update_layout(plot_bgcolor="#181C22", paper_bgcolor="#181C22", coloraxis_showscale=True)
-    st.plotly_chart(fig4, use_container_width=True)
+    fig4.update_layout(
+        plot_bgcolor="#181C22",                  # Set dark background for plot
+        paper_bgcolor="#181C22",                 # Set dark background for whole chart area
+        coloraxis_showscale=True                   # Show color scale bar for reference
+    )
+    st.plotly_chart(fig4, use_container_width=True)  # Show the heatmap in Streamlit, full width
+
+    st.markdown("</div>", unsafe_allow_html=True)  # End of local dark card for this dashboard section
+
+    st.markdown("---")   
